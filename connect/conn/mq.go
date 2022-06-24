@@ -10,7 +10,8 @@ import (
 func NewChatMessageQueue() ChatMessageQueue {
 	return &ChatMQ{
 		redisCli: redis.NewClient(&redis.Options{
-			Addr:         ":",
+			Addr:         ":49155",
+			Password:     "redispw",
 			MaxRetries:   3,
 			DB:           0,
 			ReadTimeout:  time.Second * 3,
@@ -29,9 +30,10 @@ type ChatMQ struct {
 }
 
 func (mq *ChatMQ) Send(data []byte) error {
+	m := make(map[string]interface{})
+	m["data"] = data
 	return mq.redisCli.XAdd(context.TODO(), &redis.XAddArgs{
 		Stream: "chat",
-		Values: data,
+		Values: m,
 	}).Err()
-
 }

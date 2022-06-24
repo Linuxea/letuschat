@@ -2,7 +2,9 @@ package conn
 
 import (
 	"context"
+	"fmt"
 	"net"
+	"time"
 )
 
 type ConnectionManger interface {
@@ -15,6 +17,8 @@ type ConnectionManger interface {
 
 	// Send send data
 	Send([]byte) error
+
+	HandleConn(conn *net.Conn)
 }
 
 func NewConnectionManager() ConnectionManger {
@@ -61,4 +65,34 @@ func (cm *connectionManager) UnRegister(ctx context.Context, conn *connection) {
 // Send send data
 func (cm *connectionManager) Send(data []byte) error {
 	return cm.chatMessageQueue.Send(data)
+}
+
+func (cm *connectionManager) HandleConn(conn *net.Conn) {
+
+	uniqueId := fmt.Sprintf("%d", time.Now().UnixNano())
+	wrapperConn := &connection{
+		uniqueId: uniqueId,
+		conn:     conn,
+	}
+	cm.Register(context.TODO(), wrapperConn)
+
+	data := make([]byte, 1024)
+	for {
+		select {
+		case <-time.After(time.Duration(30) * time.Minute):
+			cm.UnRegister(context.TODO(), wrapperConn)
+		default:
+			len, err := (*conn).Read(data)
+			if err != nil {
+				cm.UnRegister(context.TODO(), wrapperConn)
+				break
+			}
+
+			if err = cm.Send(data[:len]); err != nil {
+				fmt.Printf("send data error:%s\n", err.Error())
+			}
+
+		}
+
+	}
 }
