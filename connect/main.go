@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io"
 	"net"
 	"time"
 )
@@ -22,7 +21,7 @@ func main() {
 	for {
 		conn, err := listen.Accept()
 		if err != nil {
-			panic(err.Error())
+			fmt.Printf("accept error:%s\n", err.Error())
 		}
 		go handleConn(&conn)
 	}
@@ -38,21 +37,20 @@ func handleConn(conn *net.Conn) {
 	}
 	cm.Register(context.TODO(), wrapperConn)
 
-	size := make([]byte, 1024)
+	data := make([]byte, 1024)
 	for {
 		select {
 		case <-time.After(time.Duration(30) * time.Minute):
 			cm.UnRegister(context.TODO(), wrapperConn)
-			break
 		default:
-			len, err := (*conn).Read(size)
-			if err == io.EOF {
+			len, err := (*conn).Read(data)
+			if err != nil {
 				cm.UnRegister(context.TODO(), wrapperConn)
 				break
 			}
 
-			if err != nil {
-				break
+			if err = cm.Send(data[:len]); err != nil {
+				fmt.Printf("send data error:%s\n", err.Error())
 			}
 
 		}

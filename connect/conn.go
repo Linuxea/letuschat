@@ -7,17 +7,20 @@ import (
 
 type ConnectionManger interface {
 
-	// 注册
+	//Register 注册
 	Register(context.Context, *connection)
 
-	// 取消注册
+	//UnRegister 取消注册
 	UnRegister(context.Context, *connection)
+
+	// Send send data
+	Send([]byte) error
 }
 
 func NewConnectionManager() ConnectionManger {
 	return &connectionManager{
-		conns:   make(map[string][]*connection),
-		message: &jsonMessage{},
+		conns:            make(map[string][]*connection),
+		chatMessageQueue: NewChatMessageQueue(),
 	}
 }
 
@@ -29,8 +32,8 @@ type connection struct {
 
 // ConnectionManger implement
 type connectionManager struct {
-	conns   map[string][]*connection // one 2 many
-	message Message
+	conns            map[string][]*connection // one 2 many
+	chatMessageQueue ChatMessageQueue
 }
 
 func (cm *connectionManager) Register(ctx context.Context, conn *connection) {
@@ -57,10 +60,5 @@ func (cm *connectionManager) UnRegister(ctx context.Context, conn *connection) {
 
 // Send send data
 func (cm *connectionManager) Send(data []byte) error {
-
-	var message *chatMessage
-	if err := cm.message.Unmarshal(data, message); err != nil {
-		return err
-	}
-
+	return cm.chatMessageQueue.Send(data)
 }
